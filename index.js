@@ -20,7 +20,7 @@ const rl = readline.createInterface({
 async function connectBot() {
   if (opcion === '2' && !phoneNumber) {
     phoneNumber = await new Promise((resolve) => {
-      rl.question('Ingrese su número de WhatsApp (con código de país, ejemplo: 573012345678): ', (answer) => {
+      rl.question('Ingrese su número de WhatsApp con código de país: ', (answer) => {
         resolve(answer);
       });
     });
