@@ -1,0 +1,25 @@
+{
+  "name": "workcwp-bot",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "dependencies": {
+    "axios": "^1.12.2",
+    "chalk": "^5.6.2",
+    "baileys": "github:whiskeysockets/baileys",
+    "fluent-ffmpeg": "^2.1.3",
+    "node-fetch": "^3.3.2",
+    "node-id3": "^0.2.9",
+    "pino": "^9.11.0",
+    "qrcode-terminal": "^0.12.0",
+    "yt-search": "^2.13.1"
+  },
+  "description": "",
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
