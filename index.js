@@ -148,7 +148,7 @@ async function connectBot() {
   process.on('uncaughtException', (err) => {
     console.error('Error crítico:', err);
     if (currentChat) {
-      sock.sendMessage(currentChat, { text: ${err.message}` });
+      sock.sendMessage(currentChat, { text: `Error crítico: ${err.message}` });
       process.exit(1);
     }
   });
