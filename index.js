@@ -8,8 +8,8 @@ import chalk from 'chalk';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-let phoneNumber = '573012345678'; // Reemplaza con tu número de teléfono
-let opcion = '2'; // '1' para código QR, '2' para código de vinculación
+let phoneNumber = '';
+let opcion = '2';
 
 async function connectBot() {
   const { state, saveCreds } = await useMultiFileAuthState("session");
@@ -18,7 +18,7 @@ async function connectBot() {
     auth: state,
     printQRInTerminal: opcion == '1' ? true : false,
     mobile: false,
-    browser: opcion == '1' ? ['Yuki-Suou-Bot', 'Edge', '20.0.04'] : ["Ubuntu", "Chrome", "20.0.04"],
+    browser: opcion == '1' ? ['SimpleBot-MD', 'Edge', '20.0.04'] : ["Ubuntu", "Chrome", "20.0.04"],
   });
 
   // Guardar sesión
