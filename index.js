@@ -4,6 +4,7 @@ import fs from "fs/promises";
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import qrcode from "qrcode-terminal";
+import readline from "readline";
 import chalk from 'chalk';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -11,7 +12,20 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 let phoneNumber = '';
 let opcion = '2';
 
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout
+});
+
 async function connectBot() {
+  if (opcion === '2' && !phoneNumber) {
+    phoneNumber = await new Promise((resolve) => {
+      rl.question('Ingrese su número de WhatsApp (con código de país, ejemplo: 573012345678): ', (answer) => {
+        resolve(answer);
+      });
+    });
+  }
+
   const { state, saveCreds } = await useMultiFileAuthState("session");
   const sock = makeWASocket({
     logger: pino({ level: "silent" }),
@@ -27,25 +41,21 @@ async function connectBot() {
   // Escuchar actualizaciones de conexión
   sock.ev.on("connection.update", async (update) => {
     const { connection, lastDisconnect, qr } = update;
-
     if (qr && opcion == '1') {
       qrcode.generate(qr, { small: true }, (qrcode) => {
         console.log(chalk.yellow("📲 Escanea este QR con tu WhatsApp:\n"), qrcode);
       });
     }
-
     if (connection === "close") {
       if (lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut) {
         connectBot();
       }
     } else if (connection === "open") {
       console.log(chalk.green("✅ Bot conectado con éxito a WhatsApp!"));
+      rl.close();
     }
 
     if (opcion === '2' && !sock.authState.creds.registered) {
-      if (!phoneNumber) {
-        throw new Error('Por favor, ingrese el número de teléfono.');
-      }
       phoneNumber = phoneNumber.replace(/[^0-9]/g, '');
       setTimeout(async () => {
         let codigo = await sock.requestPairingCode(phoneNumber);
