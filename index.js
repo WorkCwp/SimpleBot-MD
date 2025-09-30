@@ -11,6 +11,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 let phoneNumber = '';
 let opcion = '2';
+let intentos = 0;
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -20,7 +21,7 @@ const rl = readline.createInterface({
 async function connectBot() {
   if (opcion === '2' && !phoneNumber) {
     phoneNumber = await new Promise((resolve) => {
-      rl.question('Ingrese su número de WhatsApp con código de país: ', (answer) => {
+      rl.question('Ingrese su número de WhatsApp (con código de país, ejemplo: 573012345678): ', (answer) => {
         resolve(answer);
       });
     });
@@ -58,10 +59,23 @@ async function connectBot() {
     if (opcion === '2' && !sock.authState.creds.registered) {
       phoneNumber = phoneNumber.replace(/[^0-9]/g, '');
       setTimeout(async () => {
-        let codigo = await sock.requestPairingCode(phoneNumber);
-        codigo = codigo?.match(/.{1,4}/g)?.join("-") || codigo;
-        console.log(chalk.bold.white(chalk.bgMagenta(`🎀 CÓDIGO DE VINCULACIÓN 🎀`)), chalk.bold.white(chalk.white(codigo)));
-      }, 3000);
+        try {
+          let codigo = await sock.requestPairingCode(phoneNumber);
+          codigo = codigo?.match(/.{1,4}/g)?.join("-") || codigo;
+          console.log(chalk.bold.white(chalk.bgMagenta(`🎀 CÓDIGO DE VINCULACIÓN 🎀`)), chalk.bold.white(chalk.white(codigo)));
+        } catch (error) {
+          console.error('Error al solicitar código de vinculación:', error);
+          intentos++;
+          if (intentos < 5) {
+            setTimeout(() => {
+              console.log('Reintentando...');
+            }, 10000);
+          } else {
+            console.log('Se alcanzó el límite de intentos. Abortando...');
+            process.exit(1);
+          }
+        }
+      }, 10000);
     }
   });
 
@@ -134,7 +148,7 @@ async function connectBot() {
   process.on('uncaughtException', (err) => {
     console.error('Error crítico:', err);
     if (currentChat) {
-      sock.sendMessage(currentChat, { text: `Error crítico: ${err.message}` });
+      sock.sendMessage(currentChat, { text: ${err.message}` });
       process.exit(1);
     }
   });
