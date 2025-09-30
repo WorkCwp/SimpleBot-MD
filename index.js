@@ -8,38 +8,58 @@ import chalk from 'chalk';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+let phoneNumber = '573012345678'; // Reemplaza con tu número de teléfono
+let opcion = '2'; // '1' para código QR, '2' para código de vinculación
+
 async function connectBot() {
-  const { state, saveCreds } = await useMultiFileAuthState("session")
+  const { state, saveCreds } = await useMultiFileAuthState("session");
   const sock = makeWASocket({
     logger: pino({ level: "silent" }),
-    auth: state
-  })
+    auth: state,
+    printQRInTerminal: opcion == '1' ? true : false,
+    mobile: false,
+    browser: opcion == '1' ? ['Yuki-Suou-Bot', 'Edge', '20.0.04'] : ["Ubuntu", "Chrome", "20.0.04"],
+  });
 
   // Guardar sesión
-  sock.ev.on("creds.update", saveCreds)
+  sock.ev.on("creds.update", saveCreds);
 
   // Escuchar actualizaciones de conexión
-  sock.ev.on("connection.update", (update) => {
-    const { connection, lastDisconnect, qr } = update
-    if (qr) {
+  sock.ev.on("connection.update", async (update) => {
+    const { connection, lastDisconnect, qr } = update;
+
+    if (qr && opcion == '1') {
       qrcode.generate(qr, { small: true }, (qrcode) => {
-        console.log(chalk.yellow("📲 Escanea este QR con tu WhatsApp:\n"), qrcode)
-      })
+        console.log(chalk.yellow("📲 Escanea este QR con tu WhatsApp:\n"), qrcode);
+      });
     }
+
     if (connection === "close") {
       if (lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut) {
-        connectBot()
+        connectBot();
       }
     } else if (connection === "open") {
-      console.log(chalk.green("✅ Bot conectado con éxito a WhatsApp!"))
+      console.log(chalk.green("✅ Bot conectado con éxito a WhatsApp!"));
     }
-  })
+
+    if (opcion === '2' && !sock.authState.creds.registered) {
+      if (!phoneNumber) {
+        throw new Error('Por favor, ingrese el número de teléfono.');
+      }
+      phoneNumber = phoneNumber.replace(/[^0-9]/g, '');
+      setTimeout(async () => {
+        let codigo = await sock.requestPairingCode(phoneNumber);
+        codigo = codigo?.match(/.{1,4}/g)?.join("-") || codigo;
+        console.log(chalk.bold.white(chalk.bgMagenta(`🎀 CÓDIGO DE VINCULACIÓN 🎀`)), chalk.bold.white(chalk.white(codigo)));
+      }, 3000);
+    }
+  });
 
   // Cargar plugins
-  const plugins = {}
-  const pluginPath = join(__dirname, "plugins")
-  const files = await fs.readdir(pluginPath)
-  console.log(chalk.yellow(`*╭━〘 Cargando Plugins 〙━⌬*`))
+  const plugins = {};
+  const pluginPath = join(__dirname, "plugins");
+  const files = await fs.readdir(pluginPath);
+  console.log(chalk.yellow(`*╭━〘 Cargando Plugins 〙━⌬*`));
   for (const file of files) {
     if (file.endsWith(".js")) {
       const plugin = await import(join(pluginPath, file));
@@ -65,28 +85,29 @@ async function connectBot() {
           plugins[command] = { handler: plugin.handler };
         }
       }
-      console.log(chalk.green(`┃ ➩ ${file.replace(".js", "")}`))
+      console.log(chalk.green(`┃ ➩ ${file.replace(".js", "")}`));
     }
   }
-  console.log(chalk.yellow(`*╰━━━━━━━━━━━━━━━━━━━━━⌬*`))
-  console.log(chalk.green(`Plugins cargados: ${Object.keys(plugins).length}`))
+  console.log(chalk.yellow(`*╰━━━━━━━━━━━━━━━━━━━━━⌬*`));
+  console.log(chalk.green(`Plugins cargados: ${Object.keys(plugins).length}`));
 
   let currentChat = null;
 
   // Escuchar mensajes
   sock.ev.on("messages.upsert", async ({ messages }) => {
-    const m = messages[0]
+    const m = messages[0];
     currentChat = m.key.remoteJid;
-    const fecha = new Date().toLocaleString('es-ES', { hour12: false })
-    if (!m.message) return
-    const body = m.message.conversation || m.message.extendedTextMessage?.text || ""
+    const fecha = new Date().toLocaleString('es-ES', { hour12: false });
+    if (!m.message) return;
+    const body = m.message.conversation || m.message.extendedTextMessage?.text || "";
     const prefix = /^[#.!?]/; // Define los prefijos permitidos
-    const tipo = m.key.remoteJid.includes('@g.us') ? 'Grupo' : 'Privado'
-    const usuario = m.pushName || m.key.participant
+    const tipo = m.key.remoteJid.includes('@g.us') ? 'Grupo' : 'Privado';
+    const usuario = m.pushName || m.key.participant;
+
     if (prefix.test(body)) {
       const command = body.slice(1).trim().split(" ")[0].toLowerCase(); // Elimina el prefijo y obtiene el comando
       const args = body.slice(1).trim().split(" ").slice(1).join(" "); // Obtiene los argumentos del comando
-      console.log(chalk.blue(`[${fecha}] ${tipo} - ${usuario}: ${body} (Comando)`))
+      console.log(chalk.blue(`[${fecha}] ${tipo} - ${usuario}: ${body} (Comando)`));
       if (plugins[command]) {
         try {
           await plugins[command].handler(m, { conn: sock, args });
@@ -96,9 +117,9 @@ async function connectBot() {
         }
       }
     } else {
-      console.log(chalk.cyan(`[${fecha}] ${tipo} - ${usuario}: ${body}`))
+      console.log(chalk.cyan(`[${fecha}] ${tipo} - ${usuario}: ${body}`));
     }
-  })
+  });
 
   process.on('uncaughtException', (err) => {
     console.error('Error crítico:', err);
