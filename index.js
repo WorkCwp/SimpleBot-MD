@@ -9,40 +9,10 @@ import readline from 'readline';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-async function connectBot() {
-  const { state, saveCreds } = await useMultiFileAuthState("session")
-  const sock = makeWASocket({
-    logger: pino({ level: "silent" }),
-    auth: state
-  })
-
-  // sesión
-  sock.ev.on("creds.update", saveCreds)
-
-  // conexión
-  sock.ev.on("connection.update", (update) => {
-    const { connection, lastDisconnect, qr, code } = update
-    if (qr) {
-      qrcode.generate(qr, { small: true }, (qrcode) => {
-        console.log(chalk.yellow("📲 Escanea este QR con tu WhatsApp:\n"), qrcode)
-      })
-    } else if (code) {
-      console.log(chalk.yellow(`🔢 Ingresa este código en WhatsApp: ${code}`))
-    }
-    if (connection === "close") {
-      if (lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut) {
-        connectBot()
-      }
-    } else if (connection === "open") {
-      console.log(chalk.green("✅ Bot conectado con éxito a WhatsApp!"))
-    }
-  })
-
-  // plugins
-  const plugins = {}
-  const pluginPath = join(__dirname, "plugins")
-  const files = await fs.readdir(pluginPath)
-  console.log(chalk.yellow(`*╭━〘 Cargando Plugins 〙━⌬*`))
+async function loadPlugins(pluginPath) {
+  const plugins = {};
+  const files = await fs.readdir(pluginPath);
+  console.log(chalk.yellow(`*╭━〘 Cargando Plugins 〙━⌬*`));
   for (const file of files) {
     if (file.endsWith(".js")) {
       const plugin = await import(join(pluginPath, file));
@@ -68,28 +38,63 @@ async function connectBot() {
           plugins[command] = { handler: plugin.handler };
         }
       }
-      console.log(chalk.green(`┃ ➩ ${file.replace(".js", "")}`))
+      console.log(chalk.green(`┃ ➩ ${file.replace(".js", "")}`));
     }
   }
-  console.log(chalk.yellow(`*╰━━━━━━━━━━━━━━━━━━━━━⌬*`))
-  console.log(chalk.green(`Plugins cargados: ${Object.keys(plugins).length}`))
+  console.log(chalk.yellow(`*╰━━━━━━━━━━━━━━━━━━━━━⌬*`));
+  console.log(chalk.green(`Plugins cargados: ${Object.keys(plugins).length}`));
+  return plugins;
+}
+
+async function connectBot(number) {
+  const { state, saveCreds } = await useMultiFileAuthState("session");
+  const sock = makeWASocket({
+    logger: pino({ level: "silent" }),
+    auth: state,
+    number
+  });
+
+  // sesión
+  sock.ev.on("creds.update", saveCreds);
+
+  // conexión
+  sock.ev.on("connection.update", (update) => {
+    const { connection, lastDisconnect, qr, code } = update;
+    if (qr) {
+      qrcode.generate(qr, { small: true }, (qrcode) => {
+        console.log(chalk.yellow("📲 Escanea este QR con tu WhatsApp:\n"), qrcode);
+      });
+    } else if (code) {
+      console.log(chalk.yellow(`🔢 Ingresa este código en WhatsApp: ${code}`));
+    }
+    if (connection === "close") {
+      if (lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut) {
+        connectBot();
+      }
+    } else if (connection === "open") {
+      console.log(chalk.green("✅ Bot conectado con éxito a WhatsApp!"));
+    }
+  });
+
+  // plugins
+  const plugins = await loadPlugins(join(__dirname, "plugins"));
 
   let currentChat = null;
 
-  // mensajes
+  // Escuchar mensajes
   sock.ev.on("messages.upsert", async ({ messages }) => {
-    const m = messages[0]
+    const m = messages[0];
     currentChat = m.key.remoteJid;
-    const fecha = new Date().toLocaleString('es-ES', { hour12: false })
-    if (!m.message) return
-    const body = m.message.conversation || m.message.extendedTextMessage?.text || ""
+    const fecha = new Date().toLocaleString('es-ES', { hour12: false });
+    if (!m.message) return;
+    const body = m.message.conversation || m.message.extendedTextMessage?.text || "";
     const prefix = /^[#.!?]/; // prefijos
-    const tipo = m.key.remoteJid.includes('@g.us') ? 'Grupo' : 'Privado'
-    const usuario = m.pushName || m.key.participant
+    const tipo = m.key.remoteJid.includes('@g.us') ? 'Grupo' : 'Privado';
+    const usuario = m.pushName || m.key.participant;
     if (prefix.test(body)) {
-      const command = body.slice(1).trim().split(" ")[0].toLowerCase(); // Elimina el prefijo y obtiene el comando
-      const args = body.slice(1).trim().split(" ").slice(1).join(" "); // Obtiene los argumentos del comando
-      console.log(chalk.blue(`[${fecha}] ${tipo} - ${usuario}: ${body} (Comando)`))
+      const command = body.slice(1).trim().split(" ")[0].toLowerCase(); 
+      const args = body.slice(1).trim().split(" ").slice(1).join(" "); 
+      console.log(chalk.blue(`[${fecha}] ${tipo} - ${usuario}: ${body} (Comando)`));
       if (plugins[command]) {
         try {
           await plugins[command].handler(m, { conn: sock, args });
@@ -99,9 +104,9 @@ async function connectBot() {
         }
       }
     } else {
-      console.log(chalk.cyan(`[${fecha}] ${tipo} - ${usuario}: ${body}`))
+      console.log(chalk.cyan(`[${fecha}] ${tipo} - ${usuario}: ${body}`));
     }
-  })
+  });
 
   process.on('uncaughtException', (err) => {
     console.error('Error crítico:', err);
@@ -125,15 +130,19 @@ async function main() {
     } else if (choice === '2') {
       rl.question('Ingresa el número de WhatsApp al cual vincular (con código de país, por ejemplo: +1234567890): ', async (number) => {
         console.log(`Vinculando con el número: ${number}`);
-        const { state, saveCreds } = await useMultiFileAuthState("session")
-        const sock = makeWASocket({
-          logger: pino({ level: "silent" }),
-          auth: state,
-          number
-        })
+        connectBot(number);
+      });
+    } else {
+      console.log('Opción no válida. Por favor, elige 1 o 2.');
+      rl.close();
+    }
+    rl.close();
+  });
+}
 
-        // sesión
-        sock.ev.on("creds.update", saveCreds)
+main();      console.log(chalk.green("✅ Bot conectado con éxito a WhatsApp!"))
+    }
+  })
 
         // conexión
         sock.ev.on("connection.update", (update) => {
