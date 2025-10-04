@@ -6,6 +6,7 @@
   "dependencies": {
     "axios": "^1.12.2",
     "chalk": "^5.6.2",
+    "cfonts": "^2.10.0",
     "@whiskeysockets/baileys": "^7.0.0-rc.4",
     "baileys": "github:whiskeysockets/baileys",
     "fluent-ffmpeg": "^2.1.3",
