@@ -20,14 +20,14 @@ const question = (texto) => new Promise((resolver) => rl.question(texto, resolve
 console.log(chalk.yellow.bold('—◉ㅤIniciando sistema Criwilop-MD...'));
 
 function verificarOCrearCarpetaAuth() {
-  const authPath = join(__dirname, global.authFile);
+  const authPath = join(__dirname, global.authFile || 'auth');
   if (!fs.existsSync(authPath)) {
     fs.mkdirSync(authPath, { recursive: true });
   }
 }
 
 function verificarCredsJson() {
-  const credsPath = join(__dirname, global.authFile, 'creds.json');
+  const credsPath = join(__dirname, global.authFile || 'auth', 'creds.json');
   return fs.existsSync(credsPath);
 }
 
@@ -55,15 +55,15 @@ async function start(file) {
   isRunning = true;
 
   say('Criwilop-MD\nBot', {
-    font: 'chrome',
+    font: 'block', // Cambiar el tipo de fuente a 'block'
     align: 'center',
-    gradient: ['blue', 'cyan'],
+    gradient: ['green', 'blue'], // Usar colores verde y azul
   });
 
-  say(`Bot creado por [Tu Nombre]`, {
+  say(`Bot creado por <WorkCwp/>`, {
     font: 'console',
     align: 'center',
-    gradient: ['blue', 'cyan'],
+    gradient: ['green', 'blue'], // Usar colores verde y azul
   });
 
   verificarOCrearCarpetaAuth();
