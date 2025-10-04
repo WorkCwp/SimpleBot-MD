@@ -12,7 +12,6 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 async function loadPlugins(pluginPath) {
   const plugins = {};
   const files = await fs.readdir(pluginPath);
-  console.log(chalk.yellow(`*╭━〘 Cargando Plugins 〙━⌬*`));
   for (const file of files) {
     if (file.endsWith(".js")) {
       const plugin = await import(join(pluginPath, file));
@@ -38,11 +37,8 @@ async function loadPlugins(pluginPath) {
           plugins[command] = { handler: plugin.handler };
         }
       }
-      console.log(chalk.green(`┃ ➩ ${file.replace(".js", "")}`));
     }
   }
-  console.log(chalk.yellow(`*╰━━━━━━━━━━━━━━━━━━━━━⌬*`));
-  console.log(chalk.green(`Plugins cargados: ${Object.keys(plugins).length}`));
   return plugins;
 }
 
@@ -54,10 +50,10 @@ async function connectBot(number) {
     number
   });
 
-  // sesión
+  // Guardar sesión
   sock.ev.on("creds.update", saveCreds);
 
-  // conexión
+  // Escuchar actualizaciones de conexión
   sock.ev.on("connection.update", (update) => {
     const { connection, lastDisconnect, qr, code } = update;
     if (qr) {
@@ -76,7 +72,7 @@ async function connectBot(number) {
     }
   });
 
-  // plugins
+  // Cargar plugins
   const plugins = await loadPlugins(join(__dirname, "plugins"));
 
   let currentChat = null;
@@ -88,12 +84,12 @@ async function connectBot(number) {
     const fecha = new Date().toLocaleString('es-ES', { hour12: false });
     if (!m.message) return;
     const body = m.message.conversation || m.message.extendedTextMessage?.text || "";
-    const prefix = /^[#.!?]/; // prefijos
+    const prefix = /^[#.!?]/; // Define los prefijos permitidos
     const tipo = m.key.remoteJid.includes('@g.us') ? 'Grupo' : 'Privado';
     const usuario = m.pushName || m.key.participant;
     if (prefix.test(body)) {
-      const command = body.slice(1).trim().split(" ")[0].toLowerCase(); 
-      const args = body.slice(1).trim().split(" ").slice(1).join(" "); 
+      const command = body.slice(1).trim().split(" ")[0].toLowerCase(); // Elimina el prefijo y obtiene el comando
+      const args = body.slice(1).trim().split(" ").slice(1).join(" "); // Obtiene los argumentos del comando
       console.log(chalk.blue(`[${fecha}] ${tipo} - ${usuario}: ${body} (Comando)`));
       if (plugins[command]) {
         try {
@@ -140,4 +136,4 @@ async function main() {
   });
 }
 
-main()
+main();
